@@ -14,7 +14,7 @@ class WorkflowStep(Enum):
     VALIDATE_QUERY = "validate_query" 
     EXECUTE_QUERY = "execute_query"
     VERIFY_RESULTS = "verify_results"
-    EXPLORE_DATA = "explore_data"
+    FORMAT_RESULTS = "format_results"
 
 
 @dataclass
@@ -76,7 +76,7 @@ class OrchestratorAgent:
             WorkflowStep.VALIDATE_QUERY: self._get_validate_query_prompt(),
             WorkflowStep.EXECUTE_QUERY: self._get_execute_query_prompt(),
             WorkflowStep.VERIFY_RESULTS: self._get_verify_results_prompt(),
-            WorkflowStep.EXPLORE_DATA: self._get_explore_data_prompt()
+            WorkflowStep.FORMAT_RESULTS: self._get_format_results_prompt()
         }
         
         return step_prompts.get(self.context.current_step, "Unknown step.")
@@ -170,51 +170,80 @@ After execution:
         """Get prompt for verify results step."""
         return f"""You are a data analyst. User asked: "{self.context.user_query}"
 
-CURRENT TASK: RESULTS VERIFICATION (Final Step 4 of 4)
+CURRENT TASK: PROVIDE FINAL ANSWER (Final Step 4 of 4)
 
-You executed the SQL query and got results.
+You have completed the data analysis workflow. Now provide a clear, final answer to the user.
 
 Your task:
-1. Analyze the obtained results thoroughly
-2. Ensure they directly answer the original user question
-3. Check that data looks correct and makes business sense
-4. Verify the results are complete and accurate
-5. Formulate a clear, comprehensive answer for the user
+1. **Review all the work done** - queries built, validated, and executed
+2. **Analyze the final results** and extract the key information
+3. **Provide a clear, direct answer** to the user's question
+4. **Include specific numbers, dates, or data** from your analysis
+5. **Explain what the results mean** in business context
+6. **Highlight any important insights or patterns** you discovered
 
-If results don't answer the question or look incorrect:
-- Determine the cause (wrong query, wrong data, etc.)
-- Decide which step to go back to if needed
+**CRITICAL:** This is the final step. You must give the user a complete, actionable answer.
 
-If everything is correct:
-- Formulate a clear, detailed answer to the user's question
-- Provide key numbers, insights, and business context
-- Visualize results if helpful
-- Explain any limitations or assumptions
+**Format your response as:**
+- **Direct answer** to their question (e.g., "There were 45 work orders completed in September 2025")
+- **Supporting data** with specific numbers
+- **Business insights** or context
+- **Any caveats or limitations**
+
+**Available Tools:**
+- Use any tools needed to verify or clarify the results
+- You can re-run queries if needed for verification
+- Focus on providing the final answer to the user's question
+
+**Remember:** The user is waiting for a clear, final answer. Make it actionable and insightful.
 """
     
-    def _get_explore_data_prompt(self) -> str:
-        """Get prompt for explore data step."""
+    def _get_format_results_prompt(self) -> str:
+        """Get prompt for format results step."""
         return f"""You are a data analyst. User asked: "{self.context.user_query}"
 
-CURRENT TASK: DEEP DATA EXPLORATION (Fallback Step)
+CURRENT TASK: FORMAT FINAL REPORT (Final Step 5 of 5)
 
-You need to explore the data structure to understand what's available.
+You have completed the data analysis and verified the results. Now create a professional, formatted report for the user.
 
 Your task:
-1. List available tables using list_tables
-2. Take samples from relevant tables using read_data with LIMIT
-3. Analyze the data structure and relationships
-4. Understand the business logic and data flow
-5. Find the correct tables and fields for the user's question
+1. **Create a comprehensive report** with clear sections
+2. **Format the data beautifully** using tables, charts, or structured text
+3. **Provide executive summary** with key findings
+4. **Include detailed analysis** with supporting data
+5. **Add business insights** and recommendations
+6. **Use professional formatting** with headers, bullet points, and clear structure
 
-IMPORTANT:
-- DO NOT BUILD QUERY YET! Only explore the data.
-- Use read_data, find_work_orders, find_invoices, etc. to get samples
-- Look at actual data to understand the structure
-- This is a fallback step when you need more data context
+**Report Structure:**
+```
+# 📊 Analysis Report: [User's Question]
 
-After exploration, you'll go back to building the query with better understanding.
+## 🎯 Executive Summary
+- **Direct Answer:** [Clear answer to the question]
+- **Key Finding:** [Most important insight]
+- **Business Impact:** [What this means for the business]
+
+## 📈 Detailed Results
+[Formatted data tables, charts, or structured results]
+
+## 🔍 Analysis & Insights
+[Your interpretation of the data and what it means]
+
+## 💡 Recommendations
+[Any actionable insights or next steps]
+
+## 📋 Technical Details
+[Query used, data sources, limitations, etc.]
+```
+
+**Available Tools:**
+- Use any tools needed to get additional context or verify data
+- Focus on creating a professional, comprehensive report
+- Make it visually appealing and easy to understand
+
+**Remember:** This is the final deliverable. Make it professional, comprehensive, and actionable.
 """
+    
     
     def add_tool_call(self, tool_name: str, tool_data: Dict[str, Any] = None):
         """Add a tool call to the context."""
@@ -264,20 +293,25 @@ After exploration, you'll go back to building the query with better understandin
                 return "retry_current"
         
         elif current_step == WorkflowStep.VERIFY_RESULTS:
+            # If we have any tool calls from previous steps, move to format results
+            if len(tool_calls) > 0:
+                return "move_to_format"
+            # Also move to format if we've already done the main workflow steps
+            elif len(self.context.step_history) >= 3:  # build_query, validate_query, execute_query
+                return "move_to_format"
+            else:
+                return "retry_current"
+        
+        elif current_step == WorkflowStep.FORMAT_RESULTS:
             # If we have any tool calls from previous steps, we can complete
             if len(tool_calls) > 0:
                 return "workflow_complete"
             # Also complete if we've already done the main workflow steps
-            elif len(self.context.step_history) >= 3:  # build_query, validate_query, execute_query
+            elif len(self.context.step_history) >= 4:  # build_query, validate_query, execute_query, verify_results
                 return "workflow_complete"
             else:
                 return "retry_current"
         
-        elif current_step == WorkflowStep.EXPLORE_DATA:
-            if len(current_step_tools) > 0:
-                return "move_to_build_query"
-            else:
-                return "retry_current"
         
         return "retry_current"
     
@@ -300,6 +334,11 @@ After exploration, you'll go back to building the query with better understandin
             self.context.step_history.append(self.context.current_step)
             self.context.current_step = WorkflowStep.VERIFY_RESULTS
             logger.info("➡️ Moving to VERIFY_RESULTS")
+        
+        elif decision == "move_to_format":
+            self.context.step_history.append(self.context.current_step)
+            self.context.current_step = WorkflowStep.FORMAT_RESULTS
+            logger.info("➡️ Moving to FORMAT_RESULTS")
         
         elif decision == "move_to_build_query":
             self.context.step_history.append(self.context.current_step)

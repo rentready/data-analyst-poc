@@ -161,7 +161,7 @@ def render_workflow_status():
         ("validate_query", "2️⃣ Validate Query"),
         ("execute_query", "3️⃣ Execute Query"),
         ("verify_results", "4️⃣ Verify Results"),
-        ("explore_data", "5️⃣ Explore Data")
+        ("format_results", "5️⃣ Format Report")
     ]
     
     # Show current step
@@ -353,7 +353,7 @@ def main():
             st.session_state.processor = None
             st.rerun()
         
-        elif decision in ["move_to_validate", "move_to_execute", "move_to_verify", "move_to_build_query"]:
+        elif decision in ["move_to_validate", "move_to_execute", "move_to_verify", "move_to_format", "move_to_build_query"]:
             # Move to next step
             orchestrator.move_to_next_step(decision)
             
