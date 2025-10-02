@@ -37,8 +37,26 @@ def on_tool_deny(event: RequiresApprovalEvent, agent_manager: AgentManager):
 
 def on_error_retry():
     """Handle error retry."""
-    st.session_state.stage = 'processing'
+    # Clear error state
     st.session_state.error_event = None
+    
+    # Get current orchestrator and create new run with same prompt
+    orchestrator = st.session_state.orchestrator_agent
+    if orchestrator and orchestrator.context:
+        # Get the current step prompt
+        step_prompt = orchestrator.get_current_step_prompt()
+        
+        # Create new run with the same prompt
+        agent_manager = st.session_state.agent_manager
+        run_id = agent_manager.create_run(st.session_state.thread_id, step_prompt)
+        st.session_state.run_id = run_id
+        st.session_state.processor = RunProcessor(agent_manager.agents_client)
+        st.session_state.stage = 'processing'
+        
+        logger.info(f"🔄 Retrying with new run: {run_id}")
+    else:
+        # Fallback to user input if no orchestrator
+        st.session_state.stage = 'user_input'
 
 
 def on_error_cancel():
@@ -297,6 +315,34 @@ def main():
                 
                 # Handle error events
                 if isinstance(event, ErrorEvent):
+                    # Let orchestrator decide what to do with the error
+                    orchestrator = st.session_state.orchestrator_agent
+                    if orchestrator and orchestrator.context:
+                        # Check if orchestrator wants to retry or move to next step
+                        decision = orchestrator.analyze_and_decide_next()
+                        logger.info(f"🧠 Orchestrator decision on error: {decision}")
+                        
+                        if decision == "retry_current":
+                            # Orchestrator wants to retry - create new run
+                            step_prompt = orchestrator.get_current_step_prompt()
+                            run_id = agent_manager.create_run(st.session_state.thread_id, step_prompt)
+                            st.session_state.run_id = run_id
+                            st.session_state.processor = RunProcessor(agent_manager.agents_client)
+                            logger.info(f"🔄 Orchestrator retrying with new run: {run_id}")
+                            st.rerun()
+                            return
+                        elif decision in ["move_to_validate", "move_to_execute", "move_to_verify", "move_to_format", "move_to_build_query"]:
+                            # Orchestrator wants to move to next step
+                            orchestrator.move_to_next_step(decision)
+                            step_prompt = orchestrator.get_current_step_prompt()
+                            run_id = agent_manager.create_run(st.session_state.thread_id, step_prompt)
+                            st.session_state.run_id = run_id
+                            st.session_state.processor = RunProcessor(agent_manager.agents_client)
+                            logger.info(f"➡️ Orchestrator moving to next step: {decision}")
+                            st.rerun()
+                            return
+                    
+                    # Fallback to error display
                     st.session_state.error_event = event
                     st.session_state.stage = 'error'
                     st.rerun()

@@ -319,6 +319,10 @@ Use this exact format for your report:
             else:
                 return "retry_current"
         
+        # Handle errors - if we're in any step and something went wrong, retry
+        if len(current_step_tools) == 0 and len(tool_calls) == 0:
+            return "retry_current"
+        
         
         return "retry_current"
     
