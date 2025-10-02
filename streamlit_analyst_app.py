@@ -166,13 +166,19 @@ def render_workflow_status():
     
     # Show current step
     current_step = status.get("current_step", "")
+    is_complete = status.get("is_complete", False) or st.session_state.get("workflow_complete", False)
+    
     for step_id, step_label in steps:
-        if step_id == current_step:
+        if step_id == current_step and not is_complete:
             st.sidebar.markdown(f"**▶️ {step_label}**")
-        elif step_id in status.get("step_history", []):
+        elif step_id in status.get("step_history", []) or is_complete:
             st.sidebar.markdown(f"✅ {step_label}")
         else:
             st.sidebar.markdown(f"⚪ {step_label}")
+    
+    # Show completion status
+    if is_complete:
+        st.sidebar.success("🎉 Workflow Complete!")
     
     # Show stats
     st.sidebar.caption(f"Tool calls: {status.get('total_tool_calls', 0)}")
@@ -182,6 +188,7 @@ def render_workflow_status():
         st.session_state.orchestrator_agent = OrchestratorAgent()
         st.session_state.messages = []
         st.session_state.thread_id = None
+        st.session_state.workflow_complete = False
         st.rerun()
 
 
@@ -336,6 +343,11 @@ def main():
         
         if decision == "workflow_complete":
             logger.info("🎉 Workflow complete!")
+            
+            # Mark workflow as complete
+            st.session_state.workflow_complete = True
+            
+            # Reset to user input
             st.session_state.stage = 'user_input'
             st.session_state.run_id = None
             st.session_state.processor = None
