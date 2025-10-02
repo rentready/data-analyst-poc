@@ -94,7 +94,7 @@ def initialize_app() -> AgentManager:
     mcp_token = get_mcp_token_sync(mcp_config)
     
     # Display MCP status in sidebar
-    # Get approval setting (default to True)
+    # Get approval setting (default to False)
     require_approval = False
     
     if mcp_config:
@@ -104,7 +104,7 @@ def initialize_app() -> AgentManager:
             st.divider()
             require_approval = st.checkbox(
                 "Require tool approval", 
-                value=True,
+                value=False,
                 help="When enabled, you'll need to approve each tool call before execution"
             )
     
