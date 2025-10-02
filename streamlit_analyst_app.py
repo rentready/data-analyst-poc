@@ -95,7 +95,7 @@ def initialize_app() -> AgentManager:
     
     # Display MCP status in sidebar
     # Get approval setting (default to True)
-    require_approval = True
+    require_approval = False
     
     if mcp_config:
         with st.sidebar:
