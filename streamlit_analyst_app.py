@@ -140,7 +140,7 @@ def initialize_app() -> AgentManager:
 
 
 def main():
-    st.title("🤖 Ultra Simple Chat")
+    st.title("🤖 Data Analyst Chat")
     
     # Initialize app (config, auth, MCP, agent manager, session state, thread)
     agent_manager = initialize_app()
@@ -167,7 +167,7 @@ def main():
     
     # Handle user input
     if st.session_state.stage == 'user_input':
-        if prompt := st.chat_input("Say something:"):
+        if prompt := st.chat_input("Ask a question about the data:"):
             # User message - simple dict (not an event)
             st.session_state.messages.append({"role": "user", "content": prompt})
             
@@ -201,7 +201,7 @@ def main():
             
             while not events_exhausted:
                 event = None
-                with st.spinner("Processing...", show_time=True):
+                with st.spinner("Analyzing...", show_time=True):
                     try:
                         event = next(event_generator)
                     except StopIteration as e:
