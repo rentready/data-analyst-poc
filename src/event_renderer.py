@@ -74,7 +74,14 @@ class EventRenderer:
     @staticmethod
     def render_message(event: MessageEvent):
         """Render assistant message (plain, for history)."""
-        st.markdown(event.content)
+        # Clean up markdown formatting
+        content = event.content.strip()
+        
+        # If content looks like a report with markdown, render it properly
+        if content.startswith('#') or '##' in content or '**' in content:
+            st.markdown(content, unsafe_allow_html=True)
+        else:
+            st.markdown(content)
     
     @staticmethod
     def render_message_with_typing(event: MessageEvent):
@@ -93,7 +100,15 @@ class EventRenderer:
         
         # Clear placeholder and render final text normally
         placeholder.empty()
-        st.markdown(event.content)
+        
+        # Clean up markdown formatting
+        content = event.content.strip()
+        
+        # If content looks like a report with markdown, render it properly
+        if content.startswith('#') or '##' in content or '**' in content:
+            st.markdown(content, unsafe_allow_html=True)
+        else:
+            st.markdown(content)
     
     @staticmethod
     def render_tool_calls_step(event: ToolCallsStepEvent):

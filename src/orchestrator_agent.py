@@ -215,12 +215,13 @@ Your task:
 6. **Use professional formatting** with headers, bullet points, and clear structure
 
 **Report Structure:**
-```
+Use this exact format for your report:
+
 # 📊 Analysis Report: [User's Question]
 
 ## 🎯 Executive Summary
 - **Direct Answer:** [Clear answer to the question]
-- **Key Finding:** [Most important insight]
+- **Key Finding:** [Most important insight]  
 - **Business Impact:** [What this means for the business]
 
 ## 📈 Detailed Results
@@ -234,7 +235,13 @@ Your task:
 
 ## 📋 Technical Details
 [Query used, data sources, limitations, etc.]
-```
+
+**IMPORTANT FORMATTING RULES:**
+- Use proper markdown syntax (## for headers, **bold**, - for bullets)
+- Don't use code blocks ``` for the report structure
+- Make headers clear with emojis
+- Use bullet points for lists
+- Bold important information with **text**
 
 **Available Tools:**
 - Use any tools needed to get additional context or verify data
